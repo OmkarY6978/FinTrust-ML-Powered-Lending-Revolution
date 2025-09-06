@@ -267,6 +267,8 @@ app.add_middleware(
 
 
 # --- PYDANTIC MODELS (API DATA STRUCTURES) ---
+from pydantic import validator
+
 class LoanRequest(BaseModel):
     age: int = Field(..., ge=18, le=100)
     gender: str
@@ -276,7 +278,22 @@ class LoanRequest(BaseModel):
     employment: str
     experience: int = Field(..., ge=0, le=50)
     salary: float = Field(..., gt=0)
-    cibil_id: str = Field(..., min_length=1, description="Customer's CIBIL ID for score lookup")
+    cibil_id: str = Field(..., min_length=1)
+
+    # ✅ Extra safeguard for salary
+    @validator("salary")
+    def check_salary(cls, v):
+        if v < 5000:   # example: assume no one earns less than ₹5000/month
+            raise ValueError("Salary too low. Must be at least 5000.")
+        return v
+
+    # ✅ Prevent unrealistic age values (extra check)
+    @validator("age")
+    def check_age(cls, v):
+        if v < 18 or v > 70:  # business rules
+            raise ValueError("Age must be between 18 and 70 years for eligibility.")
+        return v
+
 
     @validator('gender', 'marital_status', 'property_type', pre=True)
     def normalize_categorical_inputs(cls, v):
